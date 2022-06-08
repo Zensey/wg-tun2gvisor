@@ -9,7 +9,7 @@ require (
 	golang.org/x/net v0.0.0-20220607020251-c690dde0001d
 	golang.zx2c4.com/wireguard v0.0.0-20220601130007-6a08d81f6bc4
 
-//	gvisor.dev/gvisor v0.0.0-20220606171652-e8883fa9173a
+	// gvisor.dev/gvisor v0.0.0-20220606171652-e8883fa9173a
 	gvisor.dev/gvisor v0.0.0-20211020211948-f76a604701b6
 	// gvisor.dev/gvisor v0.0.0-20220121190119-4f2d380c8b55
 

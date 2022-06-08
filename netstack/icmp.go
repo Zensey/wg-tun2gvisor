@@ -1,103 +1,101 @@
 package netstack
 
-import (
-	"bytes"
-	"errors"
-	"log"
+// "bytes"
+// "errors"
+// "log"
 
-	"gvisor.dev/gvisor/pkg/tcpip"
-	"gvisor.dev/gvisor/pkg/tcpip/buffer"
-	"gvisor.dev/gvisor/pkg/tcpip/header"
-	"gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
-	"gvisor.dev/gvisor/pkg/tcpip/stack"
-	"gvisor.dev/gvisor/pkg/tcpip/transport/icmp"
-	"gvisor.dev/gvisor/pkg/tcpip/transport/raw"
-	"gvisor.dev/gvisor/pkg/waiter"
-)
+// "gvisor.dev/gvisor/pkg/tcpip"
+// "gvisor.dev/gvisor/pkg/tcpip/buffer"
+// "gvisor.dev/gvisor/pkg/tcpip/header"
+// "gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
+// "gvisor.dev/gvisor/pkg/tcpip/stack"
+// "gvisor.dev/gvisor/pkg/tcpip/transport/icmp"
+// "gvisor.dev/gvisor/pkg/tcpip/transport/raw"
+// "gvisor.dev/gvisor/pkg/waiter"
 
 // icmpResponder handle ICMP packets coming to gvisor/netstack.
 // Instead of responding to all ICMPs ECHO by default, we try to
 // execute a ping on the Agent, and depending of the response, we
 // send a ICMP reply back.
 
-func icmpResponder(s *netTun) error {
+// func icmpResponder(s *netTun) error {
 
-	var wq waiter.Queue
-	rawProto, rawerr := raw.NewEndpoint(s.stack, ipv4.ProtocolNumber, icmp.ProtocolNumber4, &wq)
-	if rawerr != nil {
-		log.Println(rawerr)
-		return errors.New("could not create raw endpoint")
-	}
-	if err := rawProto.Bind(tcpip.FullAddress{}); err != nil {
-		return errors.New("could not bind raw endpoint")
-	}
-	go func() {
-		we, ch := waiter.NewChannelEntry(nil)
-		wq.EventRegister(&we, waiter.ReadableEvents)
-		for {
-			var buff bytes.Buffer
-			_, err := rawProto.Read(&buff, tcpip.ReadOptions{})
+// 	var wq waiter.Queue
+// 	rawProto, rawerr := raw.NewEndpoint(s.stack, ipv4.ProtocolNumber, icmp.ProtocolNumber4, &wq)
+// 	if rawerr != nil {
+// 		log.Println(rawerr)
+// 		return errors.New("could not create raw endpoint")
+// 	}
+// 	if err := rawProto.Bind(tcpip.FullAddress{}); err != nil {
+// 		return errors.New("could not bind raw endpoint")
+// 	}
+// 	go func() {
+// 		we, ch := waiter.NewChannelEntry(nil)
+// 		wq.EventRegister(&we, waiter.ReadableEvents)
+// 		for {
+// 			var buff bytes.Buffer
+// 			_, err := rawProto.Read(&buff, tcpip.ReadOptions{})
 
-			if _, ok := err.(*tcpip.ErrWouldBlock); ok {
-				// Wait for data to become available.
-				select {
-				case <-ch:
-					_, err := rawProto.Read(&buff, tcpip.ReadOptions{})
+// 			if _, ok := err.(*tcpip.ErrWouldBlock); ok {
+// 				// Wait for data to become available.
+// 				select {
+// 				case <-ch:
+// 					_, err := rawProto.Read(&buff, tcpip.ReadOptions{})
 
-					if err != nil {
-						if _, ok := err.(*tcpip.ErrWouldBlock); ok {
-							// Oh, a race condition?
-							continue
-						} else {
-							// This is bad.
-							panic(err)
-						}
-					}
+// 					if err != nil {
+// 						if _, ok := err.(*tcpip.ErrWouldBlock); ok {
+// 							// Oh, a race condition?
+// 							continue
+// 						} else {
+// 							// This is bad.
+// 							panic(err)
+// 						}
+// 					}
 
-					iph := header.IPv4(buff.Bytes())
+// 					iph := header.IPv4(buff.Bytes())
 
-					hlen := int(iph.HeaderLength())
-					if buff.Len() < hlen {
-						return
-					}
+// 					hlen := int(iph.HeaderLength())
+// 					if buff.Len() < hlen {
+// 						return
+// 					}
 
-					// Reconstruct a ICMP PacketBuffer from bytes.
-					view := buffer.NewViewFromBytes(buff.Bytes())
-					packetbuff := stack.NewPacketBuffer(stack.PacketBufferOptions{
-						Data:               view.ToVectorisedView(),
-						ReserveHeaderBytes: hlen,
-					})
+// 					// Reconstruct a ICMP PacketBuffer from bytes.
+// 					view := buffer.NewViewFromBytes(buff.Bytes())
+// 					packetbuff := stack.NewPacketBuffer(stack.PacketBufferOptions{
+// 						Data:               view.ToVectorisedView(),
+// 						ReserveHeaderBytes: hlen,
+// 					})
 
-					packetbuff.NetworkProtocolNumber = ipv4.ProtocolNumber
-					packetbuff.TransportProtocolNumber = icmp.ProtocolNumber4
-					packetbuff.NetworkHeader().Consume(hlen)
+// 					packetbuff.NetworkProtocolNumber = ipv4.ProtocolNumber
+// 					packetbuff.TransportProtocolNumber = icmp.ProtocolNumber4
+// 					packetbuff.NetworkHeader().Consume(hlen)
 
-					log.Println("icmp consume")
+// 					log.Println("icmp consume")
 
-					// tunConn := TunConn{
-					// 	Protocol: icmp.ProtocolNumber4,
-					// 	Handler:  ICMPConn{Request: packetbuff},
-					// }
+// 					// tunConn := TunConn{
+// 					// 	Protocol: icmp.ProtocolNumber4,
+// 					// 	Handler:  ICMPConn{Request: packetbuff},
+// 					// }
 
-					// s.Lock()
-					// if s.pool == nil || s.pool.Closed() {
-					// 	s.Unlock()
-					// 	continue // If connPool is closed, ignore packet.
-					// }
+// 					// s.Lock()
+// 					// if s.pool == nil || s.pool.Closed() {
+// 					// 	s.Unlock()
+// 					// 	continue // If connPool is closed, ignore packet.
+// 					// }
 
-					// if err := s.pool.Add(tunConn); err != nil {
-					// 	s.Unlock()
-					// 	logrus.Error(err)
-					// 	continue // Unknown error, continue...
-					// }
-					// s.Unlock()
-				}
-			}
+// 					// if err := s.pool.Add(tunConn); err != nil {
+// 					// 	s.Unlock()
+// 					// 	logrus.Error(err)
+// 					// 	continue // Unknown error, continue...
+// 					// }
+// 					// s.Unlock()
+// 				}
+// 			}
 
-		}
-	}()
-	return nil
-}
+// 		}
+// 	}()
+// 	return nil
+// }
 
 // // ProcessICMP send back a ICMP echo reply from after receiving a echo request.
 // // This code come mostly from pkg/tcpip/network/ipv4/icmp.go
