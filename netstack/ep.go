@@ -1,6 +1,8 @@
 package netstack
 
 import (
+	"log"
+
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/buffer"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
@@ -43,19 +45,25 @@ func (*endpoint) LinkAddress() tcpip.LinkAddress {
 func (*endpoint) Wait() {}
 
 func (e *endpoint) WritePacket(_ stack.RouteInfo, _ tcpip.NetworkProtocolNumber, pkt *stack.PacketBuffer) tcpip.Error {
+	log.Println("endpoint > WritePacket", pkt)
+
 	e.incomingPacket <- buffer.NewVectorisedView(pkt.Size(), pkt.Views())
 	return nil
 }
 
-func (e *endpoint) WritePackets(stack.RouteInfo, stack.PacketBufferList, tcpip.NetworkProtocolNumber) (int, tcpip.Error) {
-	panic("not implemented")
-}
-
-// func (e *endpoint) WritePackets(l stack.PacketBufferList) (int, tcpip.Error) {
-// 	// panic("not implemented")
-// 	log.Println("WritePackets>", l)
-// 	return 0, nil
+// func (e *endpoint) WritePackets(stack.RouteInfo, stack.PacketBufferList, tcpip.NetworkProtocolNumber) (int, tcpip.Error) {
+// 	panic("not implemented")
 // }
+
+func (e *endpoint) WritePackets(l stack.PacketBufferList) (int, tcpip.Error) {
+	// panic("not implemented")
+	log.Println("WritePackets>", l)
+
+	for pkt := l.Front(); pkt != nil; pkt = pkt.Next() {
+		e.incomingPacket <- buffer.NewVectorisedView(pkt.Size(), pkt.Views())
+	}
+	return 0, nil
+}
 
 func (e *endpoint) WriteRawPacket(*stack.PacketBuffer) tcpip.Error {
 	panic("not implemented")

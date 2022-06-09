@@ -1,7 +1,13 @@
 package handler
 
 import (
+	"fmt"
+
+	"golang.org/x/net/icmp"
+	ipv4_ "golang.org/x/net/ipv4"
+
 	log "github.com/sirupsen/logrus"
+	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/buffer"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/header/parse"
@@ -10,21 +16,41 @@ import (
 )
 
 func ICMPHandler(s *stack.Stack) func(id stack.TransportEndpointID, pkt *stack.PacketBuffer) bool {
+
 	return func(id stack.TransportEndpointID, pkt *stack.PacketBuffer) bool {
+
 		log.Infof("[ICMP] Receive a icmp package, SRC: %s, DST: %s", id.LocalAddress, id.RemoteAddress)
-		if id.LocalAddress.String() == id.RemoteAddress.String() {
 
-			_, view := handleICMP(pkt)
-			// time.Sleep(10 * time.Second)
-			s.WriteRawPacket(1, ipv4.ProtocolNumber, view)
+		// if id.LocalAddress.String() == id.RemoteAddress.String() {
+		// _, view := handleICMP(pkt)
+		// s.WriteRawPacket(1, ipv4.ProtocolNumber, view)
+		// } else {
+		// todo forward it to remote
+		// vv := pkt.Data().ExtractVV()
+		// _ = vv.ToOwnedView()
+		// }
 
-		} else {
-
-			// todo forward it to remote
-			// vv := pkt.Data().ExtractVV()
-			// _ = vv.ToOwnedView()
+		replyData := stack.PayloadSince(pkt.TransportHeader())
+		rmsg, err := icmp.ParseMessage(ipv4_.ICMPTypeEcho.Protocol(), replyData)
+		if err != nil {
+			log.Fatal(err)
 		}
-		return false
+		switch rmsg.Body.(type) {
+		case *icmp.Echo:
+			msg := rmsg.Body.(*icmp.Echo)
+			fmt.Println("icmp echo >", msg.ID, msg.Seq)
+		default:
+			log.Printf("received %+v from %v; wanted echo", rmsg, id.RemoteAddress)
+			return false
+		}
+
+		_, view := handleICMP(pkt)
+		go func(v buffer.VectorisedView) {
+			// time.Sleep(3000 * time.Millisecond)
+			s.WritePacketToRemote(1, tcpip.LinkAddress(id.RemoteAddress), ipv4.ProtocolNumber, view)
+		}(view)
+
+		return true
 	}
 }
 
@@ -55,8 +81,7 @@ func handleICMP(pkt *stack.PacketBuffer) (*stack.PacketBuffer, buffer.Vectorised
 		ReserveHeaderBytes: header.IPv4MaximumHeaderSize,
 		Data:               replyVV,
 	})
-	// defer replyPkt.DecRef()
-	// replyPkt.
+	defer replyPkt.DecRef()
 
 	// Populate the network/transport headers in the packet buffer so the
 	// ICMP packet goes through IPTables.

@@ -6,7 +6,6 @@ import (
 	"log"
 	"net"
 
-	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
 	"gvisor.dev/gvisor/pkg/tcpip/stack"
 	"gvisor.dev/gvisor/pkg/tcpip/transport/tcp"
@@ -20,11 +19,10 @@ func TCP(s *stack.Stack /*nat map[tcpip.Address]tcpip.Address, natLock *sync.Mut
 
 		localAddress := r.ID().LocalAddress
 
-		if linkLocal().Contains(localAddress) {
-			r.Complete(true)
-			return
-		}
-
+		// if linkLocal().Contains(localAddress) {
+		// 	r.Complete(true)
+		// 	return
+		// }
 		// natLock.Lock()
 		// if replaced, ok := nat[localAddress]; ok {
 		// 	localAddress = replaced
@@ -44,9 +42,9 @@ func TCP(s *stack.Stack /*nat map[tcpip.Address]tcpip.Address, natLock *sync.Mut
 		ep, tcpErr := r.CreateEndpoint(&wq)
 		if tcpErr != nil {
 			log.Printf("r.CreateEndpoint() = %v", tcpErr)
+			r.Complete(false)
 			return
 		}
-		r.Complete(false)
 
 		remote := tcpproxy.DialProxy{
 			DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
@@ -57,10 +55,10 @@ func TCP(s *stack.Stack /*nat map[tcpip.Address]tcpip.Address, natLock *sync.Mut
 	})
 }
 
-const linkLocalSubnet = "169.254.0.0/16"
+// const linkLocalSubnet = "169.254.0.0/16"
 
-func linkLocal() *tcpip.Subnet {
-	_, parsedSubnet, _ := net.ParseCIDR(linkLocalSubnet) // CoreOS VM tries to connect to Amazon EC2 metadata service
-	subnet, _ := tcpip.NewSubnet(tcpip.Address(parsedSubnet.IP), tcpip.AddressMask(parsedSubnet.Mask))
-	return &subnet
-}
+// func linkLocal() *tcpip.Subnet {
+// 	_, parsedSubnet, _ := net.ParseCIDR(linkLocalSubnet) // CoreOS VM tries to connect to Amazon EC2 metadata service
+// 	subnet, _ := tcpip.NewSubnet(tcpip.Address(parsedSubnet.IP), tcpip.AddressMask(parsedSubnet.Mask))
+// 	return &subnet
+// }

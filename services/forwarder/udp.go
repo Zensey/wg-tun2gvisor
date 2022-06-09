@@ -8,7 +8,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
-	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/stack"
 	"gvisor.dev/gvisor/pkg/tcpip/transport/udp"
 	"gvisor.dev/gvisor/pkg/waiter"
@@ -18,9 +17,9 @@ func UDP(s *stack.Stack, nat map[tcpip.Address]tcpip.Address, natLock *sync.Mute
 	return udp.NewForwarder(s, func(r *udp.ForwarderRequest) {
 		localAddress := r.ID().LocalAddress
 
-		if linkLocal().Contains(localAddress) || localAddress == header.IPv4Broadcast {
-			return
-		}
+		// if linkLocal().Contains(localAddress) || localAddress == header.IPv4Broadcast {
+		// 	return
+		// }
 
 		natLock.Lock()
 		if replaced, ok := nat[localAddress]; ok {

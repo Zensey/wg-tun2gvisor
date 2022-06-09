@@ -14,6 +14,7 @@ import (
 	"golang.zx2c4.com/wireguard/tun"
 
 	"github.com/zensey/wg-userspace-tun/services/forwarder"
+	"github.com/zensey/wg-userspace-tun/services/handler"
 
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/buffer"
@@ -60,8 +61,8 @@ func CreateNetTUN(localAddresses, dnsServers []netip.Addr, mtu int) (tun.Device,
 	tcpForwarder := forwarder.TCP(s)
 	s.SetTransportProtocolHandler(tcp.ProtocolNumber, tcpForwarder.HandlePacket)
 
-	// icmpHandler := handler.ICMPHandler(s)
-	// s.SetTransportProtocolHandler(icmp.ProtocolNumber4, icmpHandler)
+	icmpHandler := handler.ICMPHandler(s)
+	s.SetTransportProtocolHandler(icmp.ProtocolNumber4, icmpHandler)
 
 	dev := &netTun{
 		stack:          s,
