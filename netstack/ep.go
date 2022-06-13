@@ -45,7 +45,7 @@ func (*endpoint) LinkAddress() tcpip.LinkAddress {
 func (*endpoint) Wait() {}
 
 func (e *endpoint) WritePacket(_ stack.RouteInfo, _ tcpip.NetworkProtocolNumber, pkt *stack.PacketBuffer) tcpip.Error {
-	log.Println("endpoint > WritePacket", pkt)
+	// log.Println("endpoint > WritePacket", pkt)
 
 	e.incomingPacket <- buffer.NewVectorisedView(pkt.Size(), pkt.Views())
 	return nil
@@ -57,7 +57,7 @@ func (e *endpoint) WritePacket(_ stack.RouteInfo, _ tcpip.NetworkProtocolNumber,
 
 func (e *endpoint) WritePackets(l stack.PacketBufferList) (int, tcpip.Error) {
 	// panic("not implemented")
-	log.Println("WritePackets>", l)
+	// log.Println("WritePackets>", l)
 
 	for pkt := l.Front(); pkt != nil; pkt = pkt.Next() {
 		e.incomingPacket <- buffer.NewVectorisedView(pkt.Size(), pkt.Views())

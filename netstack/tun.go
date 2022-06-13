@@ -10,9 +10,13 @@ import (
 	"log"
 	"net/netip"
 	"os"
+	"time"
 
 	"golang.zx2c4.com/wireguard/tun"
 
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
+	"github.com/google/gopacket/pcapgo"
 	"github.com/zensey/wg-userspace-tun/services/forwarder"
 	"github.com/zensey/wg-userspace-tun/services/handler"
 
@@ -35,7 +39,10 @@ type netTun struct {
 	incomingPacket chan buffer.VectorisedView
 	mtu            int
 	dnsServers     []netip.Addr
-	// hasV4, hasV6   bool
+
+	//
+	w *pcapgo.Writer
+	f *os.File
 }
 
 func CreateNetTUN(localAddresses, dnsServers []netip.Addr, mtu int) (tun.Device, *Net, error) {
@@ -54,10 +61,6 @@ func CreateNetTUN(localAddresses, dnsServers []netip.Addr, mtu int) (tun.Device,
 		// HandleLocal:              false,
 	})
 
-	// // Gvisor Hack: Disable ICMP handling.
-	// s.SetICMPLimit(0)
-	// s.SetICMPBurst(0)
-
 	tcpForwarder := forwarder.TCP(s)
 	s.SetTransportProtocolHandler(tcp.ProtocolNumber, tcpForwarder.HandlePacket)
 
@@ -71,8 +74,11 @@ func CreateNetTUN(localAddresses, dnsServers []netip.Addr, mtu int) (tun.Device,
 		dnsServers:     dnsServers,
 		mtu:            mtu,
 	}
-	// myEP := my.NewMyPacketEndpoint()
-	// _ = myEP
+
+	dev.f, _ = os.Create("file.pcap")
+	dev.w = pcapgo.NewWriterNanos(dev.f)
+	dev.w.WriteFileHeader(65536, layers.LinkTypeEthernet) // new file, must do this.
+
 
 	tcpipErr := s.CreateNIC(1, (*endpoint)(dev) /*, myEP*/)
 	if tcpipErr != nil {
@@ -89,11 +95,6 @@ func CreateNetTUN(localAddresses, dnsServers []netip.Addr, mtu int) (tun.Device,
 	if err := dnsServer(s); err != nil {
 		return nil, nil, err
 	}
-
-	// // Start a endpoint that will reply to ICMP echo queries
-	// if err := icmpResponder(dev); err != nil {
-	// 	log.Fatal(err)
-	// }
 
 	// for _, ip := range localAddresses {
 	// 	protoAddr := tcpip.ProtocolAddress{
@@ -136,17 +137,28 @@ func (tun *netTun) Events() chan tun.Event {
 }
 
 func (tun *netTun) Read(buf []byte, offset int) (int, error) {
-	log.Println("tun> Read")
+	// log.Println("tun> Read")
 
 	view, ok := <-tun.incomingPacket
 	if !ok {
 		return 0, os.ErrClosed
 	}
-	return view.Read(buf[offset:])
+	n, err := view.Read(buf[offset:])
+	if n > 0 {
+		p := make([]byte, 0)
+		p = append(p, []byte{0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 8, 0}...)
+		p = append(p, buf[offset:offset+n]...)
+		err := tun.w.WritePacket(gopacket.CaptureInfo{Timestamp: time.Now(), CaptureLength: len(p), Length: len(p)}, p)
+		if err != nil {
+			log.Println("tun> Write", err)
+		}
+	}
+
+	return n, err
 }
 
 func (tun *netTun) Write(buf []byte, offset int) (int, error) {
-	log.Println("tun> Write")
+	// log.Println("tun> Write")
 
 	packet := buf[offset:]
 	if len(packet) == 0 {
@@ -156,10 +168,10 @@ func (tun *netTun) Write(buf []byte, offset int) (int, error) {
 	pkb := stack.NewPacketBuffer(stack.PacketBufferOptions{Data: buffer.NewVectorisedView(len(packet), []buffer.View{buffer.NewViewFromBytes(packet)})})
 	switch packet[0] >> 4 {
 	case 4:
-		log.Println("tun>>> DeliverNetworkPacket 4>")
+		// log.Println("tun>>> DeliverNetworkPacket 4>")
 		tun.dispatcher.DeliverNetworkPacket("", "", ipv4.ProtocolNumber, pkb)
 	case 6:
-		log.Println("tun>>> DeliverNetworkPacket 6>")
+		// log.Println("tun>>> DeliverNetworkPacket 6>")
 		tun.dispatcher.DeliverNetworkPacket("", "", ipv6.ProtocolNumber, pkb)
 	}
 
