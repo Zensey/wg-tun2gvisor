@@ -15,8 +15,6 @@ import (
 
 func TCP(s *stack.Stack /*nat map[tcpip.Address]tcpip.Address, natLock *sync.Mutex*/) *tcp.Forwarder {
 	return tcp.NewForwarder(s, 0, 10, func(r *tcp.ForwarderRequest) {
-		log.Println("TCP>>>")
-
 		localAddress := r.ID().LocalAddress
 
 		// if linkLocal().Contains(localAddress) {

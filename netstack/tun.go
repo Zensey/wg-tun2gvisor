@@ -75,10 +75,11 @@ func CreateNetTUN(localAddresses, dnsServers []netip.Addr, mtu int) (tun.Device,
 		mtu:            mtu,
 	}
 
-	dev.f, _ = os.Create("file.pcap")
-	dev.w = pcapgo.NewWriterNanos(dev.f)
-	dev.w.WriteFileHeader(65536, layers.LinkTypeEthernet) // new file, must do this.
-
+	if false {
+		dev.f, _ = os.Create("file.pcap")
+		dev.w = pcapgo.NewWriterNanos(dev.f)
+		dev.w.WriteFileHeader(65536, layers.LinkTypeEthernet) // new file, must do this.
+	}
 
 	tcpipErr := s.CreateNIC(1, (*endpoint)(dev) /*, myEP*/)
 	if tcpipErr != nil {
@@ -144,7 +145,7 @@ func (tun *netTun) Read(buf []byte, offset int) (int, error) {
 		return 0, os.ErrClosed
 	}
 	n, err := view.Read(buf[offset:])
-	if n > 0 {
+	if false && n > 0 {
 		p := make([]byte, 0)
 		p = append(p, []byte{0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 8, 0}...)
 		p = append(p, buf[offset:offset+n]...)
@@ -169,10 +170,10 @@ func (tun *netTun) Write(buf []byte, offset int) (int, error) {
 	switch packet[0] >> 4 {
 	case 4:
 		// log.Println("tun>>> DeliverNetworkPacket 4>")
-		tun.dispatcher.DeliverNetworkPacket("", "", ipv4.ProtocolNumber, pkb)
+		tun.dispatcher.DeliverNetworkPacket(ipv4.ProtocolNumber, pkb)
 	case 6:
 		// log.Println("tun>>> DeliverNetworkPacket 6>")
-		tun.dispatcher.DeliverNetworkPacket("", "", ipv6.ProtocolNumber, pkb)
+		tun.dispatcher.DeliverNetworkPacket(ipv6.ProtocolNumber, pkb)
 	}
 
 	return len(buf), nil

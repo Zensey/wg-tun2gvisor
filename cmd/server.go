@@ -10,14 +10,14 @@ package main
 
 import (
 	"log"
-
-	// "io"
-	// "net"
-	// "net/http"
-
+	"net/http"
+	_ "net/http/pprof"
 	"net/netip"
 	"os"
 	"os/signal"
+	"runtime"
+	"runtime/debug"
+	"time"
 
 	"github.com/zensey/wg-userspace-tun/netstack"
 	"golang.zx2c4.com/wireguard/conn"
@@ -80,6 +80,13 @@ allowed_ip=0.0.0.0/0
 	// 	log.Panicln(err)
 	// }
 
+	go func() {
+		time.Sleep(time.Minute)
+		runtime.GC()
+		debug.FreeOSMemory()
+
+	}()
+	http.ListenAndServe("localhost:8080", nil)
 	select {}
 
 }

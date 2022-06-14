@@ -108,7 +108,7 @@ func (p *Pinger) clearOldEntriesJob() {
 		p.mu.Lock()
 		for k, v := range p.entries {
 			if tnow.After(v.timeout) {
-				log.Println("clearOldEntriesJob>", k)
+				// log.Println("clearOldEntriesJob>", k)
 				delete(p.entries, k)
 			}
 		}
@@ -170,7 +170,7 @@ func ICMPHandler(s *stack.Stack) func(id stack.TransportEndpointID, pkt *stack.P
 			s.WritePacketToRemote(1, "", ipv4.ProtocolNumber, view)
 			return true
 		}
-		
+
 		// forward it to remote
 		icmpMsg := stack.PayloadSince(pkt.TransportHeader())
 		rmsg, err := icmp.ParseMessage(ipv4_.ICMPTypeEcho.Protocol(), icmpMsg)
@@ -202,7 +202,8 @@ func wrapMsgIntoIPv4Packet(src, dst tcpip.Address, msg []byte) buffer.Vectorised
 	replyIPHdr.SetSourceAddress(src)
 	replyIPHdr.SetDestinationAddress(dst)
 	replyIPHdr.SetTTL(64)
-	replyIPHdr.SetProtocol(1)
+	// replyIPHdr.SetProtocol(1)
+
 	replyIPHdr.SetTotalLength(uint16(len(replyIPHdr) + len(msg)))
 	replyIPHdr.SetChecksum(0)
 	replyIPHdr.SetChecksum(^replyIPHdr.CalculateChecksum())
