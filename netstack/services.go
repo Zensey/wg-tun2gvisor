@@ -4,8 +4,7 @@ import (
 	"log"
 	"net"
 
-	"github.com/zensey/wg-userspace-tun/pkg/types"
-	"github.com/zensey/wg-userspace-tun/services/dns"
+	"github.com/zensey/wg-tun2gvisor/services/dns"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
 	"gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
@@ -13,7 +12,7 @@ import (
 )
 
 // services
-func dnsServer( /*configuration *types.Configuration,*/ s *stack.Stack) error {
+func dnsServer(  s *stack.Stack) error {
 	udpConn, err := gonet.DialUDP(s, &tcpip.FullAddress{
 		NIC:  1,
 		Addr: tcpip.Address(net.ParseIP("10.0.0.1").To4()),
@@ -24,7 +23,7 @@ func dnsServer( /*configuration *types.Configuration,*/ s *stack.Stack) error {
 	}
 
 	go func() {
-		if err := dns.Serve(udpConn, []types.Zone{}); err != nil {
+		if err := dns.Serve(udpConn ); err != nil {
 			log.Println(err)
 		}
 	}()

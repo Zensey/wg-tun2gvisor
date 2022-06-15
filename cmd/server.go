@@ -19,7 +19,7 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/zensey/wg-userspace-tun/netstack"
+	"github.com/zensey/wg-tun2gvisor/netstack"
 	"golang.zx2c4.com/wireguard/conn"
 	"golang.zx2c4.com/wireguard/device"
 )

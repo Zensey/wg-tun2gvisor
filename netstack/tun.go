@@ -17,8 +17,8 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcapgo"
-	"github.com/zensey/wg-userspace-tun/services/forwarder"
-	"github.com/zensey/wg-userspace-tun/services/handler"
+	"github.com/zensey/wg-tun2gvisor/services/forwarder"
+	"github.com/zensey/wg-tun2gvisor/services/handler"
 
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/buffer"

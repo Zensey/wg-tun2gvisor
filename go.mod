@@ -1,4 +1,4 @@
-module github.com/zensey/wg-userspace-tun
+module github.com/zensey/wg-tun2gvisor
 
 go 1.18
 

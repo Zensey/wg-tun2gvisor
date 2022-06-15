@@ -2,18 +2,14 @@ package dns
 
 import (
 	"context"
-	"fmt"
 	"net"
-	"strings"
 
 	"github.com/miekg/dns"
 	log "github.com/sirupsen/logrus"
-	"github.com/zensey/wg-userspace-tun/pkg/types"
-	//"github.com/containers/gvisor-tap-vsock/pkg/types"
 )
 
 type dnsHandler struct {
-	zones []types.Zone
+	//zones []types.Zone
 }
 
 func (h *dnsHandler) handle(w dns.ResponseWriter, r *dns.Msg) {
@@ -28,44 +24,6 @@ func (h *dnsHandler) handle(w dns.ResponseWriter, r *dns.Msg) {
 
 func (h *dnsHandler) addAnswers(m *dns.Msg) {
 	for _, q := range m.Question {
-		for _, zone := range h.zones {
-			zoneSuffix := fmt.Sprintf(".%s", zone.Name)
-			if strings.HasSuffix(q.Name, zoneSuffix) {
-				if q.Qtype != dns.TypeA {
-					return
-				}
-				for _, record := range zone.Records {
-					withoutZone := strings.TrimSuffix(q.Name, zoneSuffix)
-					if (record.Name != "" && record.Name == withoutZone) ||
-						(record.Regexp != nil && record.Regexp.MatchString(withoutZone)) {
-						m.Answer = append(m.Answer, &dns.A{
-							Hdr: dns.RR_Header{
-								Name:   q.Name,
-								Rrtype: dns.TypeA,
-								Class:  dns.ClassINET,
-								Ttl:    0,
-							},
-							A: record.IP,
-						})
-						return
-					}
-				}
-				if !zone.DefaultIP.Equal(net.IP("")) {
-					m.Answer = append(m.Answer, &dns.A{
-						Hdr: dns.RR_Header{
-							Name:   q.Name,
-							Rrtype: dns.TypeA,
-							Class:  dns.ClassINET,
-							Ttl:    0,
-						},
-						A: zone.DefaultIP,
-					})
-					return
-				}
-				m.Rcode = dns.RcodeNameError
-				return
-			}
-		}
 
 		resolver := net.Resolver{
 			PreferGo: false,
@@ -112,9 +70,9 @@ func (h *dnsHandler) addAnswers(m *dns.Msg) {
 	}
 }
 
-func Serve(udpConn net.PacketConn, zones []types.Zone) error {
+func Serve(udpConn net.PacketConn) error {
 	mux := dns.NewServeMux()
-	handler := &dnsHandler{zones: zones}
+	handler := &dnsHandler{}
 	mux.HandleFunc(".", handler.handle)
 	srv := &dns.Server{
 		PacketConn: udpConn,
