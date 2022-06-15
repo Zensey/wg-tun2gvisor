@@ -1,31 +1,42 @@
 package forwarder
 
 import (
-	"context"
 	"fmt"
+	"io"
 	"log"
 	"net"
+	"sync"
 
 	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
 	"gvisor.dev/gvisor/pkg/tcpip/stack"
 	"gvisor.dev/gvisor/pkg/tcpip/transport/tcp"
 	"gvisor.dev/gvisor/pkg/waiter"
-	"inet.af/tcpproxy"
 )
 
-func TCP(s *stack.Stack /*nat map[tcpip.Address]tcpip.Address, natLock *sync.Mutex*/) *tcp.Forwarder {
-	return tcp.NewForwarder(s, 0, 10, func(r *tcp.ForwarderRequest) {
-		localAddress := r.ID().LocalAddress
+// func relay(src, dst net.Conn) {
+// 	defer src.Close()
+// 	defer dst.Close()
+// 	buf := global.BufPool.Get(global.ConnBufSize)
+// 	defer global.BufPool.Put(buf)
 
-		// if linkLocal().Contains(localAddress) {
-		// 	r.Complete(true)
-		// 	return
-		// }
-		// natLock.Lock()
-		// if replaced, ok := nat[localAddress]; ok {
-		// 	localAddress = replaced
-		// }
-		// natLock.Unlock()
+// 	for {
+// 		src.SetDeadline(time.Now().Add(global.TcpStreamTimeout))
+// 		nr, err := src.Read(buf)
+// 		if err != nil {
+// 			return
+// 		}
+
+// 		dst.SetDeadline(time.Now().Add(global.TcpStreamTimeout))
+// 		if nw, err := dst.Write(buf[:nr]); nw < nr || err != nil {
+// 			return
+// 		}
+// 	}
+// }
+
+func TCP(s *stack.Stack /*nat map[tcpip.Address]tcpip.Address, natLock *sync.Mutex*/) *tcp.Forwarder {
+
+	return tcp.NewForwarder(s, 0, 100, func(r *tcp.ForwarderRequest) {
+		localAddress := r.ID().LocalAddress
 
 		log.Printf("TCP> %s: %d", localAddress, r.ID().LocalPort)
 
@@ -44,19 +55,20 @@ func TCP(s *stack.Stack /*nat map[tcpip.Address]tcpip.Address, natLock *sync.Mut
 			return
 		}
 
-		remote := tcpproxy.DialProxy{
-			DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
-				return outbound, nil
-			},
+		conn := gonet.NewTCPConn(&wq, ep)
+		// go io.Copy(outbound, conn)
+		// io.Copy(conn, outbound)
+
+		wg := sync.WaitGroup{}
+		cpy := func(dst, src net.Conn) {
+			defer wg.Done()
+			io.Copy(dst, src)
+			dst.Close()
 		}
-		remote.HandleConn(gonet.NewTCPConn(&wq, ep))
+		wg.Add(2)
+		go cpy(outbound, conn)
+		go cpy(conn, outbound)
+		wg.Wait()
+
 	})
 }
-
-// const linkLocalSubnet = "169.254.0.0/16"
-
-// func linkLocal() *tcpip.Subnet {
-// 	_, parsedSubnet, _ := net.ParseCIDR(linkLocalSubnet) // CoreOS VM tries to connect to Amazon EC2 metadata service
-// 	subnet, _ := tcpip.NewSubnet(tcpip.Address(parsedSubnet.IP), tcpip.AddressMask(parsedSubnet.Mask))
-// 	return &subnet
-// }

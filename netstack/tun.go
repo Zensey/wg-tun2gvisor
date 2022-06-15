@@ -175,6 +175,7 @@ func (tun *netTun) Write(buf []byte, offset int) (int, error) {
 		// log.Println("tun>>> DeliverNetworkPacket 6>")
 		tun.dispatcher.DeliverNetworkPacket(ipv6.ProtocolNumber, pkb)
 	}
+	pkb.DecRef()
 
 	return len(buf), nil
 }
