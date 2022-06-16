@@ -1,6 +1,3 @@
-//go:build ignore
-// +build ignore
-
 /* SPDX-License-Identifier: MIT
  *
  * Copyright (C) 2019-2021 WireGuard LLC. All Rights Reserved.
@@ -34,15 +31,6 @@ func main() {
 		log.Panic(err)
 	}
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		<-c
-		// dev.Close()
-		tun.Close()
-		// os.Exit(0)
-	}()
-
 	bind := conn.NewDefaultBind()
 	dev := device.NewDevice(tun, bind, device.NewLogger(device.LogLevelVerbose, ""))
 	err = dev.IpcSet(`listen_port=42642
@@ -66,26 +54,30 @@ allowed_ip=0.0.0.0/0
 	log.Println("err>", err)
 	dev.Up()
 
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		<-c
+		log.Println("os.Interrupt >>>")
+		// dev.Down()
+
+		// tun.(*netstack.NetTun).Close()
+		// tun.Close()
+		dev.Down()
+		dev.Close()
+		<-dev.Wait()
+		log.Println("os.Interrupt >>> wait")
+		os.Exit(0)
+	}()
+
 	_ = tnet
-	// listener, err := tnet.ListenTCP(&net.TCPAddr{Port: 80})
-	// if err != nil {
-	// 	log.Panicln(err)
-	// }
-	// http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-	// 	log.Printf("> %s - %s - %s", request.RemoteAddr, request.URL.String(), request.UserAgent())
-	// 	io.WriteString(writer, "Hello from userspace TCP!")
-	// })
-	// err = http.Serve(listener, nil)
-	// if err != nil {
-	// 	log.Panicln(err)
-	// }
 
 	go func() {
 		time.Sleep(time.Minute)
 		runtime.GC()
 		debug.FreeOSMemory()
 	}()
-	
+
 	http.ListenAndServe("localhost:8080", nil)
 	select {}
 

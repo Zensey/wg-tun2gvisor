@@ -8,8 +8,8 @@ import (
 )
 
 type (
-	endpoint netTun
-	Net      netTun
+	endpoint NetTun
+	Net      NetTun
 )
 
 func (e *endpoint) Attach(dispatcher stack.NetworkDispatcher) {
@@ -21,7 +21,7 @@ func (e *endpoint) IsAttached() bool {
 }
 
 func (e *endpoint) MTU() uint32 {
-	mtu, err := (*netTun)(e).MTU()
+	mtu, err := (*NetTun)(e).MTU()
 	if err != nil {
 		panic(err)
 	}

@@ -31,7 +31,7 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/transport/udp"
 )
 
-type netTun struct {
+type NetTun struct {
 	stack      *stack.Stack
 	dispatcher stack.NetworkDispatcher
 
@@ -41,8 +41,9 @@ type netTun struct {
 	dnsServers     []netip.Addr
 
 	//
-	w *pcapgo.Writer
-	f *os.File
+	closed bool
+	w      *pcapgo.Writer
+	f      *os.File
 }
 
 func CreateNetTUN(localAddresses, dnsServers []netip.Addr, mtu int) (tun.Device, *Net, error) {
@@ -67,7 +68,7 @@ func CreateNetTUN(localAddresses, dnsServers []netip.Addr, mtu int) (tun.Device,
 	icmpHandler := handler.ICMPHandler(s)
 	s.SetTransportProtocolHandler(icmp.ProtocolNumber4, icmpHandler)
 
-	dev := &netTun{
+	dev := &NetTun{
 		stack:          s,
 		events:         make(chan tun.Event, 10),
 		incomingPacket: make(chan buffer.VectorisedView),
@@ -125,19 +126,19 @@ func CreateNetTUN(localAddresses, dnsServers []netip.Addr, mtu int) (tun.Device,
 	return dev, (*Net)(dev), nil
 }
 
-func (tun *netTun) Name() (string, error) {
+func (tun *NetTun) Name() (string, error) {
 	return "go", nil
 }
 
-func (tun *netTun) File() *os.File {
+func (tun *NetTun) File() *os.File {
 	return nil
 }
 
-func (tun *netTun) Events() chan tun.Event {
+func (tun *NetTun) Events() chan tun.Event {
 	return tun.events
 }
 
-func (tun *netTun) Read(buf []byte, offset int) (int, error) {
+func (tun *NetTun) Read(buf []byte, offset int) (int, error) {
 	// log.Println("tun> Read")
 
 	view, ok := <-tun.incomingPacket
@@ -158,7 +159,7 @@ func (tun *netTun) Read(buf []byte, offset int) (int, error) {
 	return n, err
 }
 
-func (tun *netTun) Write(buf []byte, offset int) (int, error) {
+func (tun *NetTun) Write(buf []byte, offset int) (int, error) {
 	// log.Println("tun> Write")
 
 	packet := buf[offset:]
@@ -180,22 +181,26 @@ func (tun *netTun) Write(buf []byte, offset int) (int, error) {
 	return len(buf), nil
 }
 
-func (tun *netTun) Flush() error {
+func (tun *NetTun) Flush() error {
 	return nil
 }
 
-func (tun *netTun) Close() error {
-	tun.stack.RemoveNIC(1)
+func (tun *NetTun) Close() error {
+	log.Println("tun > Close")
 
-	if tun.events != nil {
-		close(tun.events)
-	}
-	if tun.incomingPacket != nil {
-		close(tun.incomingPacket)
+	if !tun.closed {
+		if tun.events != nil {
+			close(tun.events)
+		}
+		if tun.incomingPacket != nil {
+			close(tun.incomingPacket)
+		}
+		tun.closed = true
+		tun.stack.RemoveNIC(1)
 	}
 	return nil
 }
 
-func (tun *netTun) MTU() (int, error) {
+func (tun *NetTun) MTU() (int, error) {
 	return tun.mtu, nil
 }
