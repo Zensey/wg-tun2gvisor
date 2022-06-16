@@ -1,13 +1,13 @@
 package handler
 
 import (
-	"fmt"
 	"net"
 	"sync"
 	"time"
 
 	"golang.org/x/net/icmp"
 	ipv4_ "golang.org/x/net/ipv4"
+	"golang.org/x/time/rate"
 
 	log "github.com/sirupsen/logrus"
 	"gvisor.dev/gvisor/pkg/tcpip"
@@ -51,6 +51,7 @@ type Pinger struct {
 
 	entries map[requestID]*pingEnt
 	mu      sync.Mutex
+	limiter *rate.Limiter
 
 	s *stack.Stack
 }
@@ -64,12 +65,16 @@ func newPinger(s *stack.Stack) *Pinger {
 	}
 
 	return &Pinger{
-		c: c, entries: pingMap, s: s,
+		c:       c,
+		entries: pingMap,
+		s:       s,
+		limiter: rate.NewLimiter(1, 2),
 	}
 }
 
 // send to external network
 func (p *Pinger) Ping(msg *icmp.Echo, dst, src tcpip.Address) {
+	log.Println("Ping >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", dst)
 
 	wm := icmp.Message{
 		Type: ipv4_.ICMPTypeEcho,
@@ -90,7 +95,6 @@ func (p *Pinger) Ping(msg *icmp.Echo, dst, src tcpip.Address) {
 	}
 
 	rid := getRequestID(msg, dst)
-	log.Println("Ping>", dst)
 	p.mu.Lock()
 	p.entries[rid] = &pingEnt{
 		src:     src,
@@ -116,6 +120,7 @@ func (p *Pinger) clearOldEntriesJob() {
 	}
 }
 
+// process echo reply
 func (p *Pinger) ProcessIncomingICMP() {
 	rb := make([]byte, 1500)
 	for {
@@ -124,6 +129,8 @@ func (p *Pinger) ProcessIncomingICMP() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		_ = cm
+
 		rm, err := icmp.ParseMessage(ipv4_.ICMPTypeEchoReply.Protocol(), rb[:n])
 		if err != nil {
 			log.Fatal(err)
@@ -131,7 +138,7 @@ func (p *Pinger) ProcessIncomingICMP() {
 
 		switch rm.Type {
 		case ipv4_.ICMPTypeEchoReply:
-			log.Printf("got reflection from %v. %v", peer, cm)
+			log.Printf("got reflection from %v. %v > ", peer)
 
 			msg := rm.Body.(*icmp.Echo)
 			ip := net.ParseIP(peer.String())
@@ -146,8 +153,10 @@ func (p *Pinger) ProcessIncomingICMP() {
 			p.mu.Unlock()
 
 			if ok {
-				replyVV := wrapMsgIntoIPv4Packet(ent.dst, ent.src, rb[:n])
-				p.s.WritePacketToRemote(1, "", ipv4.ProtocolNumber, replyVV)
+				log.Println("Reply >", ent, reqID)
+
+				view := wrapMsgIntoIPv4Packet(ent.dst, ent.src, rb[:n])
+				p.s.WritePacketToRemote(1, "", ipv4.ProtocolNumber, view)
 			}
 
 		default:
@@ -164,8 +173,9 @@ func ICMPHandler(s *stack.Stack) func(id stack.TransportEndpointID, pkt *stack.P
 	return func(id stack.TransportEndpointID, pkt *stack.PacketBuffer) bool {
 		log.Infof("[ICMP] Receive a icmp package, SRC: %s, DST: %s", id.LocalAddress, id.RemoteAddress)
 
-		// remote - peer's tunnnel interface address
+		// // remote - peer's tunnnel interface address
 		if id.LocalAddress.String() == "10.0.0.1" {
+			log.Info("[ICMP] handle localy")
 			_, view := handleICMP(pkt)
 			s.WritePacketToRemote(1, "", ipv4.ProtocolNumber, view)
 			return true
@@ -177,13 +187,17 @@ func ICMPHandler(s *stack.Stack) func(id stack.TransportEndpointID, pkt *stack.P
 		if err != nil {
 			log.Fatal(err)
 		}
-		iph := header.IPv4(pkt.NetworkHeader().View())
+		// iph := header.IPv4(pkt.NetworkHeader().View())
 
 		switch rmsg.Body.(type) {
 		case *icmp.Echo:
-			msg := rmsg.Body.(*icmp.Echo)
-			fmt.Println("icmp echo >", msg.ID, msg.Seq, iph.TTL())
-			pinger.Ping(msg, id.LocalAddress, id.RemoteAddress)
+			if pinger.limiter.Allow() {
+				msg := rmsg.Body.(*icmp.Echo)
+				log.Println("icmp echo > forward", msg.ID, msg.Seq)
+				pinger.Ping(msg, id.LocalAddress, id.RemoteAddress)
+			} else {
+				log.Println("icmp echo > rate limit exceeded, dropping")
+			}
 
 		default:
 			log.Printf("received %+v from %v; wanted echo", rmsg, id.RemoteAddress)
@@ -194,15 +208,16 @@ func ICMPHandler(s *stack.Stack) func(id stack.TransportEndpointID, pkt *stack.P
 }
 
 func wrapMsgIntoIPv4Packet(src, dst tcpip.Address, msg []byte) buffer.VectorisedView {
-	replyHeaderLength := uint8(header.IPv4MinimumSize)
-	replyIPHdrBytes := make([]byte, replyHeaderLength)
 
-	replyIPHdr := header.IPv4(replyIPHdrBytes)
-	replyIPHdr.SetHeaderLength(replyHeaderLength)
-	replyIPHdr.SetSourceAddress(src)
-	replyIPHdr.SetDestinationAddress(dst)
-	replyIPHdr.SetTTL(64)
-	// replyIPHdr.SetProtocol(1)
+	view := buffer.NewView(header.IPv4MinimumSize)
+	replyIPHdr := header.IPv4(view)
+
+	replyIPHdr.Encode(&header.IPv4Fields{
+		TTL:      64,
+		SrcAddr:  src,
+		DstAddr:  dst,
+		Protocol: 1,
+	})
 
 	replyIPHdr.SetTotalLength(uint16(len(replyIPHdr) + len(msg)))
 	replyIPHdr.SetChecksum(0)

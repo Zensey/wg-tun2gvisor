@@ -409,6 +409,8 @@ github.com/munnerz/goautoneg v0.0.0-20120707110453-a547fc61f48d/go.mod h1:+n7T8m
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f/go.mod h1:ZdcZmHo+o7JKHSa8/e818NopupXU1YMK5fe1lsApnBw=
+github.com/mysteriumnetwork/gvisor v0.0.0-20220615150015-d552b202473c h1:D+eaCgtT41ma+IKDnXLpa2G+xl/nZI4zmFgltfeCf0A=
+github.com/mysteriumnetwork/gvisor v0.0.0-20220615150015-d552b202473c/go.mod h1:TIvkJD0sxe8pIob3p6T8IzxXunlp6yfgktvTNp+DGNM=
 github.com/ncw/swift v1.0.47/go.mod h1:23YIA4yWVnGwv2dQlN4bB7egfYX6YLn0Yo/S6zZO/ZM=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn4U=
@@ -966,14 +968,6 @@ gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C
 gotest.tools v2.2.0+incompatible/go.mod h1:DsYFclhRJ6vuDpmuTbkuFWG+y2sxOXAzmJt81HFBacw=
 gotest.tools/v3 v3.0.2/go.mod h1:3SzNCllyD9/Y+b5r9JIKQ474KzkZyqLqEfYqMsX94Bk=
 gotest.tools/v3 v3.0.3/go.mod h1:Z7Lb0S5l+klDB31fvDQX8ss/FlKDxtlFlw3Oa8Ymbl8=
-gvisor.dev/gvisor v0.0.0-20211020211948-f76a604701b6 h1:lgV5mAyX6S2EZAkZcvFkAs18WZ7yJbRzEv/PCH8iSlw=
-gvisor.dev/gvisor v0.0.0-20211020211948-f76a604701b6/go.mod h1:m1RK/gef4nU1CWOFscQWVk7iUgGH2Hz9Ee+lgeCzOBo=
-gvisor.dev/gvisor v0.0.0-20220121190119-4f2d380c8b55 h1:KXWt1l6GMxSQ2YUvclCaqoAtb69Nw+FlU8F4rMaSqFs=
-gvisor.dev/gvisor v0.0.0-20220121190119-4f2d380c8b55/go.mod h1:vmN0Pug/s8TJmpnt30DvrEfZ5vDl52psGLU04tFuK2U=
-gvisor.dev/gvisor v0.0.0-20220606171652-e8883fa9173a h1:NDqvWdjcdD7U8tnzfyNTOi1AS2uoQIytGJGHw31ef2g=
-gvisor.dev/gvisor v0.0.0-20220606171652-e8883fa9173a/go.mod h1:TIvkJD0sxe8pIob3p6T8IzxXunlp6yfgktvTNp+DGNM=
-gvisor.dev/gvisor v0.0.0-20220606234707-a30c81cd8022 h1:xoaAbmwjK+NRSbsSdsbvZLG4tUeoBlluWC9Qtp0YfC8=
-gvisor.dev/gvisor v0.0.0-20220606234707-a30c81cd8022/go.mod h1:TIvkJD0sxe8pIob3p6T8IzxXunlp6yfgktvTNp+DGNM=
 honnef.co/go/tools v0.0.0-20190102054323-c2f93a96b099/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
 honnef.co/go/tools v0.0.0-20190106161140-3f1c8253044a/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
 honnef.co/go/tools v0.0.0-20190418001031-e561f6794a2a/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=

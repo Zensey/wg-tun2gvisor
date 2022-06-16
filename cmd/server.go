@@ -84,8 +84,8 @@ allowed_ip=0.0.0.0/0
 		time.Sleep(time.Minute)
 		runtime.GC()
 		debug.FreeOSMemory()
-
 	}()
+	
 	http.ListenAndServe("localhost:8080", nil)
 	select {}
 
