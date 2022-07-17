@@ -17,7 +17,6 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcapgo"
-	"github.com/zensey/wg-tun2gvisor/services/forwarder"
 	"github.com/zensey/wg-tun2gvisor/services/handler"
 
 	"gvisor.dev/gvisor/pkg/tcpip"
@@ -38,6 +37,8 @@ type NetTun struct {
 	events         chan tun.Event
 	incomingPacket chan buffer.VectorisedView
 	mtu            int
+
+	localAddresses []netip.Addr
 	dnsServers     []netip.Addr
 
 	//
@@ -61,20 +62,20 @@ func CreateNetTUN(localAddresses, dnsServers []netip.Addr, mtu int) (tun.Device,
 		// AllowPacketEndpointWrite: true,
 		// HandleLocal:              false,
 	})
-
-	tcpForwarder := forwarder.TCP(s)
-	s.SetTransportProtocolHandler(tcp.ProtocolNumber, tcpForwarder.HandlePacket)
-
-	icmpHandler := handler.ICMPHandler(s)
-	s.SetTransportProtocolHandler(icmp.ProtocolNumber4, icmpHandler)
-
 	dev := &NetTun{
 		stack:          s,
 		events:         make(chan tun.Event, 10),
 		incomingPacket: make(chan buffer.VectorisedView),
 		dnsServers:     dnsServers,
 		mtu:            mtu,
+		localAddresses: localAddresses,
 	}
+
+	s.SetTransportProtocolHandler(tcp.ProtocolNumber, tcp.NewForwarder(s, 0, 10000, dev.acceptTCP).HandlePacket)
+	s.SetTransportProtocolHandler(udp.ProtocolNumber, udp.NewForwarder(s, dev.acceptUDP).HandlePacket)
+
+	icmpHandler := handler.ICMPHandler(s)
+	s.SetTransportProtocolHandler(icmp.ProtocolNumber4, icmpHandler)
 
 	if false {
 		dev.f, _ = os.Create("file.pcap")
@@ -97,23 +98,6 @@ func CreateNetTUN(localAddresses, dnsServers []netip.Addr, mtu int) (tun.Device,
 	if err := dnsServer(s); err != nil {
 		return nil, nil, err
 	}
-
-	// for _, ip := range localAddresses {
-	// 	protoAddr := tcpip.ProtocolAddress{
-	// 		Protocol:          ipv4.ProtocolNumber,
-	// 		AddressWithPrefix: tcpip.Address(ip.AsSlice()).WithPrefix(),
-	// 	}
-	// 	log.Println("AddProtocolAddress", protoAddr, header.IPv4EmptySubnet.String())
-	// 	tcpipErr := dev.stack.AddProtocolAddress(1, protoAddr, stack.AddressProperties{})
-	// 	if tcpipErr != nil {
-	// 		return nil, nil, fmt.Errorf("AddProtocolAddress(%v): %v", ip, tcpipErr)
-	// 	}
-	// }
-	// dev.stack.AddRoute(tcpip.Route{Destination: header.IPv4EmptySubnet, NIC: 1})
-	// log.Println("dev.stack.GetRouteTable()", dev.stack.GetRouteTable())
-
-	// Enable forwarding
-	// s.SetForwardingDefaultAndAllNICs(ipv4.ProtocolNumber, false)
 
 	s.SetRouteTable([]tcpip.Route{
 		{
@@ -203,4 +187,14 @@ func (tun *NetTun) Close() error {
 
 func (tun *NetTun) MTU() (int, error) {
 	return tun.mtu, nil
+}
+
+func (tun *NetTun) isLocal(remoteAddr tcpip.Address) bool {
+	for _, ip := range tun.localAddresses {
+		if tcpip.Address(ip.AsSlice()) == remoteAddr {
+			return true
+		}
+	}
+
+	return false
 }

@@ -12,7 +12,7 @@ import (
 )
 
 // services
-func dnsServer(  s *stack.Stack) error {
+func dnsServer(s *stack.Stack) error {
 	udpConn, err := gonet.DialUDP(s, &tcpip.FullAddress{
 		NIC:  1,
 		Addr: tcpip.Address(net.ParseIP("10.0.0.1").To4()),
@@ -23,7 +23,7 @@ func dnsServer(  s *stack.Stack) error {
 	}
 
 	go func() {
-		if err := dns.Serve(udpConn ); err != nil {
+		if err := dns.Serve(udpConn); err != nil {
 			log.Println(err)
 		}
 	}()

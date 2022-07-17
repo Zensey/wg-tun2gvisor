@@ -54,16 +54,9 @@ func (e *endpoint) WritePacket(_ stack.RouteInfo, _ tcpip.NetworkProtocolNumber,
 // }
 
 func (e *endpoint) WritePackets(l stack.PacketBufferList) (int, tcpip.Error) {
-	// panic("not implemented")
-	// log.Println("WritePackets>", l)
-
 	for _, pkt := range l.AsSlice() {
 		e.incomingPacket <- buffer.NewVectorisedView(pkt.Size(), pkt.Views())
 	}
-
-	// for pkt := l.Front(); pkt != nil; pkt = pkt.Next() {
-	// 	e.incomingPacket <- buffer.NewVectorisedView(pkt.Size(), pkt.Views())
-	// }
 	return 0, nil
 }
 
@@ -77,3 +70,4 @@ func (*endpoint) ARPHardwareType() header.ARPHardwareType {
 
 // func (e *endpoint) AddHeader(tcpip.LinkAddress, tcpip.LinkAddress, tcpip.NetworkProtocolNumber, *stack.PacketBuffer) {}
 func (e *endpoint) AddHeader(*stack.PacketBuffer) {}
+
