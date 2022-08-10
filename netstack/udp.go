@@ -16,6 +16,10 @@ const (
 )
 
 func (tun *NetTun) acceptUDP(req *udp.ForwarderRequest) {
+	if isPrivateIP(net.IP(req.ID().LocalAddress)) {
+		log.Printf("Access to private IPv4 subnet is restricted: %s", req.ID().LocalAddress.String())
+		return
+	}
 	sess := req.ID()
 	log.Println("acceptUDP>", sess.LocalAddress, sess.RemoteAddress)
 
@@ -72,6 +76,13 @@ func (tun *NetTun) proxy(ctx context.Context, cancel context.CancelFunc, dst net
 					log.Printf("Failed to read packed from %s", srcAddr)
 				}
 				return
+			}
+			if n > 0 {
+				err := tun.limiter.WaitN(ctx, n)
+				if err != nil {
+					log.Printf("Shaper error: %v", err)
+					return
+				}
 			}
 
 			_, err = dst.WriteTo(buf[:n], dstAddr)

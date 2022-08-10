@@ -12,13 +12,13 @@ import (
 	"os"
 	"time"
 
-	"golang.zx2c4.com/wireguard/tun"
+	"github.com/zensey/wg-tun2gvisor/services/handler"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcapgo"
-	"github.com/zensey/wg-tun2gvisor/services/handler"
-
+	"golang.org/x/time/rate"
+	"golang.zx2c4.com/wireguard/tun"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/buffer"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
@@ -45,6 +45,8 @@ type NetTun struct {
 	closed bool
 	w      *pcapgo.Writer
 	f      *os.File
+
+	limiter *rate.Limiter
 }
 
 func CreateNetTUN(localAddresses, dnsServers []netip.Addr, mtu int) (tun.Device, *Net, error) {
@@ -62,6 +64,10 @@ func CreateNetTUN(localAddresses, dnsServers []netip.Addr, mtu int) (tun.Device,
 		// AllowPacketEndpointWrite: true,
 		// HandleLocal:              false,
 	})
+
+	// 1 Mbps in total
+	limiter := rate.NewLimiter(rate.Limit(1*1024*1024/8), 1*1024*1024/8)
+
 	dev := &NetTun{
 		stack:          s,
 		events:         make(chan tun.Event, 10),
@@ -69,6 +75,7 @@ func CreateNetTUN(localAddresses, dnsServers []netip.Addr, mtu int) (tun.Device,
 		dnsServers:     dnsServers,
 		mtu:            mtu,
 		localAddresses: localAddresses,
+		limiter:        limiter,
 	}
 
 	s.SetTransportProtocolHandler(tcp.ProtocolNumber, tcp.NewForwarder(s, 0, 10000, dev.acceptTCP).HandlePacket)
