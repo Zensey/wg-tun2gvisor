@@ -1,5 +1,5 @@
 # wg-tun2gvisor
-A userspace VPN using Wireguard-Go and gVisor. Created for prototype / demo purposes.
+A userspace VPN server (Wireguard-Go) which desn't need TUN/TAP device. Created for prototype / demo purposes.
 
-It forwards TCP and UDP traffic from wireguard tunnel to network using gvisor userspace network stack.
+It forwards TCP and UDP traffic from wireguard tunnel to network using gvisor's userspace implementation of network stack.
 Does not require any extra privileges.
